@@ -4,6 +4,10 @@ library(ggplot2)
 library(lubridate)
 library(useful)
 library(MASS)
+library(tree)
+library(ISLR)
+library(caret)
+attach(Carseats)
 
 # read table
 coupon = read.csv("coupon.csv")
@@ -54,10 +58,16 @@ ggplot(data,aes(Age))+
 
 data$earlyuser <- ifelse(data$JoinDate<="2014-11-30","early","new")
 
+# tree
 
-
-
-
-# tree.data <- data[,c(,12,13)]
+tree.data <- data[,c(5,6,11,12,14,15)]
 set.seed(1)
+tree1 <- tree(formula = Revenue~.,tree.data)
+plot(tree1)
+text(tree1,pretty = 0)
 
+
+# regression
+
+fit.lm <- lm(Revenue~., data = tree.data)
+summary(fit.lm)
