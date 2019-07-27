@@ -1,0 +1,186 @@
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+data = read.csv("cooldata.csv")
+
+coupon1 = data %>%
+    filter(Coupon == "yes")
+coupon0 = data %>%
+    filter(Coupon == "no")
+```
+
+```{r}
+# failed to run this function
+
+# arts = c("Jewelry","Paintings","Mosaics","Sculpture")
+
+# T_TEST = function(art) {
+#    for (art in arts) {
+    # for (age in levels(data$Age_cat)) {
+    #        for (joindate in levels(data$Joindate_cat)) {
+    #            for (visit_freq in levels(data$Visits_freq_cat)) {
+    #                
+    #                t = t.test(coupon0[coupon0$Age_cat == age,]
+    #                                [coupon0$Joindate_cat == joindate,]
+    #                                [coupon0$Visits_freq_cat == visit_freq,]$art,
+    #                           
+    #                                coupon1[coupon1$Age_cat == age,]
+    #                                [coupon1$Joindate_cat == joindate,]
+    #                                [coupon1$Visits_freq_cat == visit_freq,]$art)
+    #                
+    #                
+    #                t_table = data.frame(rbind(t_table, 
+    #                                           list(art, age, joindate, visit_freq, 
+    #                                t$p.value, t$estimate[1],t$estimate[2])))
+    #                
+    #                colnames(t_table) = c("Art_type", "Age_cat", "Joindate_cat", #"Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+    #"Est_mean_Coupon")
+    #                
+    #                as.numeric(c(t_table$P_value, t_table$Est_mean_NonCoupon, t_table$Est_mean_Coupon))
+    #                
+    #               return(as.data.frame(t_table))
+    #            }
+    #        }
+    #    }
+    #}
+#}
+```
+
+
+```{r}
+t_jewelry = NULL
+
+    for (age in levels(data$Age_cat)) {
+        for (joindate in levels(data$Joindate_cat)) {
+            for (visit_freq in levels(data$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Jewelry,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Jewelry)
+                
+                
+                t_jewelry = data.frame(rbind(t_jewelry, 
+                                           list("Jewelry", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_jewelry) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_jewelry$P_value, t_jewelry$Est_mean_NonCoupon, t_jewelry$Est_mean_Coupon))
+                
+                as.data.frame(t_jewelry)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_paintings = NULL
+
+    for (age in levels(data$Age_cat)) {
+        for (joindate in levels(data$Joindate_cat)) {
+            for (visit_freq in levels(data$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Paintings,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Paintings)
+                
+                
+                t_paintings = data.frame(rbind(t_paintings, 
+                                           list("Paintings", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_paintings) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_paintings$P_value, t_paintings$Est_mean_NonCoupon, t_paintings$Est_mean_Coupon))
+                
+                as.data.frame(t_paintings)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_mosaics = NULL
+
+    for (age in levels(data$Age_cat)) {
+        for (joindate in levels(data$Joindate_cat)) {
+            for (visit_freq in levels(data$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Mosaics,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Mosaics)
+                
+                
+                t_mosaics = data.frame(rbind(t_mosaics, 
+                                           list("Mosaics", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_mosaics) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_mosaics$P_value, t_mosaics$Est_mean_NonCoupon, t_mosaics$Est_mean_Coupon))
+                
+                as.data.frame(t_mosaics)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_sculpture = NULL
+
+    for (age in levels(data$Age_cat)) {
+        for (joindate in levels(data$Joindate_cat)) {
+            for (visit_freq in levels(data$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Sculpture,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Sculpture)
+                
+                
+                t_sculpture = data.frame(rbind(t_sculpture, 
+                                           list("Sculpture", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_sculpture) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_sculpture$P_value, t_sculpture$Est_mean_NonCoupon, t_sculpture$Est_mean_Coupon))
+                
+                as.data.frame(t_sculpture)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_table = as.matrix(rbind(t_jewelry, t_paintings, t_mosaics, t_sculpture))
+
+write.csv(t_table, "t_test_data.csv")
+```
+

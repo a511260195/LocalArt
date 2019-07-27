@@ -1,0 +1,561 @@
+---
+title: "DSO-530 LocalArt"
+author: "Xudong ZHANG"
+output:
+  word_document: default
+  html_document: default
+---
+
+#Part 1 Data Preparation#
+```{r}
+library(dplyr)
+library(plyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(lubridate)
+library(gridExtra)
+```
+
+```{r}
+# read table
+coupon = read.csv("coupon.csv")
+data = read.csv("LocalArt.csv")
+
+# join table
+coupon$Coupon = "yes"
+data = join(data, coupon[,-1], by = "CustID" )
+data$Coupon = ifelse(is.na(data$Coupon),"no","yes")
+# coupon_status: no(3983)  yes(1017) 
+```
+
+```{r}
+# aggregate the total spending
+data = mutate(data, Revenue = Paintings + Jewelry + Mosaics + Sculpture)
+
+
+# K-Means
+# partition 5000 users 
+# by different spending on different categories
+
+#data_means = kmeans(data[,c("Paintings","Jewelry", "Mosaics","Sculpture","Age")], 4, nstart = 20)
+#data$cluster = as.factor(data_means$cluster)
+
+#c("Paintings","Jewelry", "Mosaics","Sculpture","Age")
+# k-means cannot do non-numericals
+coupon1 = data %>%
+    filter(Coupon == "yes")
+coupon0 = data %>%
+    filter(Coupon == "no")
+```
+
+```{r}
+arts = c("Jewelry","Paintings","Mosaics","Sculpture")
+
+for (art in arts) {
+  t_test_trial = t.test(coupon0[,art], coupon1[,art])
+  print(art, t_test_trial$p.value, t_test_trial$estimate[1])
+}
+```
+
+
+```{r}
+ggplot(data, aes(Revenue,
+                 fill = Coupon,
+                 alpha = 0.5))+
+    geom_density() +
+    labs(title = "Revenue Density Distribution")
+
+# t.test !!
+t_revenue = t.test(coupon0$Revenue, coupon1$Revenue)
+t_revenue$p.value
+t_revenue$estimate
+```
+
+
+```{r}
+# overview of spending density distribution (Coupon vs Non-Coupon)
+ggplot(coupon1, aes(col = "white", alpha = .1)) +
+    geom_density(aes(Paintings, fill = "red" )) +
+    geom_density(aes(Jewelry, fill = "blue")) +
+    geom_density(aes(Mosaics, fill = "green" )) +
+    geom_density(aes(Sculpture, fill = "yellow" )) +
+    labs(title = "Spending distribution of Coupon") +
+    theme(legend.position="none")+
+    ylim(0,0.006)
+
+ggplot(coupon0, aes(col = "white", alpha = .1)) +
+    geom_density(aes(Paintings, fill = "red" )) +
+    geom_density(aes(Jewelry, fill = "blue")) +
+    geom_density(aes(Mosaics, fill = "green" )) +
+    geom_density(aes(Sculpture, fill = "yellow" )) +
+    labs(title = "Spending distribution of Non-Coupon") +
+    theme(legend.position="none")
+
+# almost the same!
+```
+
+To dig deeper, to segment all the 5000 customers to examing the coupon effect more precisely.
+
+```{r}
+# categorize by joindate (into two groups)
+data$JoinDate = ymd(data$JoinDate)
+
+data$Joindate_cat = ifelse(data$JoinDate<"2014-11-14","old", "new")
+
+ggplot(data,aes(JoinDate,
+                fill = Joindate_cat)) +
+  geom_histogram(binwidth = 2) +
+  labs(title = "Joindate Distribution")
+```
+
+```{r}
+# categorize by age (into three groups)
+end = ymd("2015-12-31")
+data$DOB = ymd(data$DOB)
+data$Age = 2015 - year(data$DOB)
+
+data = data %>%
+    mutate(Age_cat = ifelse(Age <= 30, "younger",
+                        ifelse(Age <=40, "middle-aged", "elder")))
+
+ggplot(data , aes(Age, fill = Age_cat))+
+  geom_bar()+
+  labs(title = "Age Distribution")
+
+
+```
+
+
+```{r}
+# categorize by visit frequency (into three groups)
+
+data$Visits_freq = data$Visits / as.numeric((end-data$JoinDate )/30)
+
+data$Visits_freq_cat = ifelse(data$Visits_freq<= 4,"low",
+                         ifelse(data$Visits_freq<= 8,"medium","high"))
+
+ggplot(data,aes(Visits_freq, fill = Visits_freq_cat)) +
+  geom_bar(stat = "count", binwidth = 0.2) +
+  labs(title = "Visits Frequency Distribution (per month)")
+
+```
+
+```{r}
+write.csv(data,"cooldata.csv")
+```
+
+#Part2 T-test(72 subgroups)#
+
+```{r}
+cooldata = read.csv("cooldata.csv")
+
+coupon1 = cooldata %>%
+    filter(Coupon == "yes")
+coupon0 = cooldata %>%
+    filter(Coupon == "no")
+```
+
+```{r}
+# failed to run this function
+
+# arts = c("Jewelry","Paintings","Mosaics","Sculpture")
+
+# T_TEST = function(art) {
+#    for (art in arts) {
+    # for (age in levels(data$Age_cat)) {
+    #        for (joindate in levels(data$Joindate_cat)) {
+    #            for (visit_freq in levels(data$Visits_freq_cat)) {
+    #                
+    #                t = t.test(coupon0[coupon0$Age_cat == age,]
+    #                                [coupon0$Joindate_cat == joindate,]
+    #                                [coupon0$Visits_freq_cat == visit_freq,]$art,
+    #                           
+    #                                coupon1[coupon1$Age_cat == age,]
+    #                                [coupon1$Joindate_cat == joindate,]
+    #                                [coupon1$Visits_freq_cat == visit_freq,]$art)
+    #                
+    #                
+    #                t_table = data.frame(rbind(t_table, 
+    #                                           list(art, age, joindate, visit_freq, 
+    #                                t$p.value, t$estimate[1],t$estimate[2])))
+    #                
+    #                colnames(t_table) = c("Art_type", "Age_cat", "Joindate_cat", #"Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+    #"Est_mean_Coupon")
+    #                
+    #                as.numeric(c(t_table$P_value, t_table$Est_mean_NonCoupon, t_table$Est_mean_Coupon))
+    #                
+    #               return(as.data.frame(t_table))
+    #            }
+    #        }
+    #    }
+    #}
+#}
+```
+
+
+```{r}
+t_jewelry = NULL
+
+    for (age in levels(cooldata$Age_cat)) {
+        for (joindate in levels(cooldata$Joindate_cat)) {
+            for (visit_freq in levels(cooldata$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Jewelry,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Jewelry)
+                
+                
+                t_jewelry = data.frame(rbind(t_jewelry, 
+                                           list("Jewelry", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_jewelry) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_jewelry$P_value, t_jewelry$Est_mean_NonCoupon, t_jewelry$Est_mean_Coupon))
+                
+                as.data.frame(t_jewelry)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_paintings = NULL
+
+    for (age in levels(cooldata$Age_cat)) {
+        for (joindate in levels(cooldata$Joindate_cat)) {
+            for (visit_freq in levels(cooldata$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Paintings,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Paintings)
+                
+                
+                t_paintings = data.frame(rbind(t_paintings, 
+                                           list("Paintings", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_paintings) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_paintings$P_value, t_paintings$Est_mean_NonCoupon, t_paintings$Est_mean_Coupon))
+                
+                as.data.frame(t_paintings)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_mosaics = NULL
+
+    for (age in levels(cooldata$Age_cat)) {
+        for (joindate in levels(cooldata$Joindate_cat)) {
+            for (visit_freq in levels(cooldata$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Mosaics,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Mosaics)
+                
+                
+                t_mosaics = data.frame(rbind(t_mosaics, 
+                                           list("Mosaics", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_mosaics) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_mosaics$P_value, t_mosaics$Est_mean_NonCoupon, t_mosaics$Est_mean_Coupon))
+                
+                as.data.frame(t_mosaics)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_sculpture = NULL
+
+    for (age in levels(cooldata$Age_cat)) {
+        for (joindate in levels(cooldata$Joindate_cat)) {
+            for (visit_freq in levels(cooldata$Visits_freq_cat)) {
+                
+                t = t.test(coupon0[coupon0$Age_cat == age,]
+                                [coupon0$Joindate_cat == joindate,]
+                                [coupon0$Visits_freq_cat == visit_freq,]$Sculpture,
+                           
+                                coupon1[coupon1$Age_cat == age,]
+                                [coupon1$Joindate_cat == joindate,]
+                                [coupon1$Visits_freq_cat == visit_freq,]$Sculpture)
+                
+                
+                t_sculpture = data.frame(rbind(t_sculpture, 
+                                           list("Sculpture", age, joindate, visit_freq, 
+                                t$p.value, t$estimate[1],t$estimate[2])))
+                
+                colnames(t_sculpture) = c("Art_type", "Age_cat", "Joindate_cat", "Visit_freq_cat", "P_value","Est_mean_NonCoupon",
+"Est_mean_Coupon")
+                
+                as.numeric(c(t_sculpture$P_value, t_sculpture$Est_mean_NonCoupon, t_sculpture$Est_mean_Coupon))
+                
+                as.data.frame(t_sculpture)
+            }
+        }
+    }
+
+```
+
+```{r}
+t_data = as.matrix(rbind(t_jewelry, t_paintings, t_mosaics, t_sculpture))
+
+write.csv(t_data, "t_test_data.csv")
+```
+
+#Part3 T-test Analysis (spending level)
+
+```{r}
+t_data = read.csv("t_test_data.csv")
+head(t_data)
+t_data = t_data %>%
+    filter(P_value < .01) %>%
+    gather("Coupon","Est_mean",7:8) 
+
+t_data$Coupon = str_sub(t_data$Coupon, start = 10)
+t_data = t_data[,-1]
+head(t_data)
+```
+
+```{r}
+# one-dimension comparison
+# by age
+
+ggplot(t_data, aes(Art_type, Est_mean,
+           fill = Coupon,
+           alpha = .01)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(~Age_cat)+
+  labs(y = "Average Spending",
+       x = "Type of Artworks",
+       title = "One-dimension Comparison of Customer Spending",
+       subtitle = "By Age Groups ") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+# missing values for elder group, indicating that coupon effects are in-significant on this group. And for the values that are not missing, coupon excerts negative effects on elder people. We can simply conclude that do not send coupons to elder customers in this case.
+```
+
+```{r}
+# one-dimension comparison
+# by joindate
+
+ggplot(t_data, aes(Art_type, Est_mean,
+           fill = Coupon,
+           alpha = .01)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(~Joindate_cat)+
+  labs(x = "Average Spending",
+       y = "Type of Artworks",
+       title = "One-dimension Comparison of Customer Spending",
+       subtitle = "By Joindate Groups ") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+```
+
+```{r}
+# one-dimension comparison
+# by visit_freq
+
+ggplot(t_data, aes(Art_type, Est_mean,
+           fill = Coupon,
+           alpha = .01)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(~Visit_freq_cat)+
+  labs(x = "Average Spending",
+       y = "Type of Artworks",
+       title = "One-dimension Comparison of Customer Spending",
+       subtitle = "By Visit_freq Groups ") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+
+```
+Intuitively, there is always a reversed coupon effects on paintings and sculpture.
+
+```{r}
+# two-dimension comparison
+# by age and joindate
+
+ggplot(t_data, aes(Art_type, Est_mean,
+                   fill = Coupon,
+                   alpha = .01)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(Joindate_cat~Age_cat)+
+  labs(x = "Average Spending",
+       y = "Type of Artworks",
+       title = "Two-dimension Comparison of Customer Spending",
+       subtitle = "By Age and Joindate Groups ") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+
+```{r}
+# two-dimension comparison
+# by age and visit_freq
+
+ggplot(t_data, aes(Art_type, Est_mean,
+                   fill = Coupon,
+                   alpha = .01)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(Age_cat~Visit_freq_cat)+
+  labs(y = "Average Spending",
+       x = "Type of Artworks",
+       title = "Two-dimension Comparison of Customer Spending",
+       subtitle = "By Age and Visit_freq Groups ") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+
+```{r}
+# two-dimension comparison
+# by joindate and visit_freq
+
+ggplot(t_data, aes(Art_type, Est_mean,
+                   fill = Coupon,
+                   alpha = .01)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(Visit_freq_cat~Joindate_cat)+
+  labs(y = "Average Spending",
+       x = "Type of Artworks",
+       title = "Two-dimension Comparison of Customer Spending",
+       subtitle = "By Joindate and Visit_freq Groups ") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+
+#Part 4 T-test Analysis(commission level)#
+```{r}
+# to create a heatmap of the commission change
+com_data = read.csv("t_test_data.csv")
+com_data = com_data %>%
+    filter(P_value < .01) %>%
+    mutate(spending_change = Est_mean_Coupon - Est_mean_NonCoupon) %>%
+    mutate(commission_change = ifelse(Art_type %in% c("Jewelry","Paintings"),
+                                      spending_change*.08, spending_change*.12)) 
+
+positive_change = filter(com_data, commission_change > 0)
+negetive_change = filter(com_data, commission_change < 0)
+```
+
+```{r}
+# plot positive change
+a <- ggplot(positive_change, aes(Age_cat, Art_type)) + 
+  geom_tile(aes(fill = commission_change),
+            colour = "white") + 
+  scale_fill_gradient(low = "white", high = "steelblue") + 
+  facet_grid(~Joindate_cat) +
+  theme(legend.position = "None") +
+  labs(title = "Age & Joindate")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+b <- ggplot(positive_change, aes(Joindate_cat, Art_type)) + 
+  geom_tile(aes(fill = commission_change),
+            colour = "white") + 
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  facet_grid(~Visit_freq_cat) +
+  theme(legend.position = "None") +
+  labs(y = "", title = "Joindate & Visit_freqency") +
+  scale_y_discrete(breaks= "") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+c <- ggplot(positive_change, aes(Visit_freq_cat, Art_type)) + 
+  geom_tile(aes(fill = commission_change),
+            colour = "white") + 
+  scale_fill_gradient(low = "white", high = "steelblue", name = "Comm\nchange\n") +
+  facet_grid(~Age_cat) +
+  theme(legend.margin=margin(t = 0, unit='cm'),
+        legend.text=element_text(size=8)) +
+  labs(y = "", title = "Visit_frequecy & Age") +
+  scale_y_discrete(breaks= "")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+grid.arrange(a,b,c, ncol=3)
+```
+
+```{r}
+# plot negative change
+d <- ggplot(negetive_change, aes(Age_cat, Art_type)) + 
+  geom_tile(aes(fill = commission_change),
+            colour = "white") + 
+  scale_fill_gradient(low = "white", high = "red") + 
+  facet_grid(~Joindate_cat) +
+  theme(legend.position = "None") +
+  labs(title = "Age & Joindate")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+e <- ggplot(negetive_change, aes(Joindate_cat, Art_type)) + 
+  geom_tile(aes(fill = commission_change),
+            colour = "white") + 
+  scale_fill_gradient(low = "white", high = "red") +
+  facet_grid(~Visit_freq_cat) +
+  theme(legend.position = "None") +
+  labs(y = "", title = "Joindate & Visit_freqency") +
+  scale_y_discrete(breaks= "") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+f <- ggplot(negetive_change, aes(Visit_freq_cat, Art_type)) + 
+  geom_tile(aes(fill = commission_change),
+            colour = "white") + 
+  scale_fill_gradient(low = "red", high = "white", name = "Comm\nchange\n") +
+  facet_grid(~Age_cat) +
+  theme(legend.margin=margin(t = 0, unit='cm'),
+        legend.text=element_text(size=8)) +
+  labs(y = "", title = "Visit_frequecy & Age") +
+  scale_y_discrete(breaks= "") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+grid.arrange(d,e,f, ncol=3)
+```
+
+```{r}
+# find the most sensitive segement that comes with biggest commission increase
+com_data[which.max(com_data$commission_change),]
+```
+That's to say, among all the 18 segmented subgroups, younger(below 25) + old(joined later than Nov 2014) + medium user (monthly 4-8 visits) customers are most sensitive to buy more sculpture with coupon promotion.
+
+
+
+```{r}
+# aggregate four types of artwork and plot the total commission change
+
+tot_change <- com_data %>%
+  group_by(Age_cat, Joindate_cat, Visit_freq_cat) %>%
+  summarise(tot_spending = sum(spending_change),
+            tot_commission = sum(commission_change)) 
+
+# don not know why I failed to knit this final last ggplot 
+# but the fact is that I can run this chunk in rstudio separately
+# please advise
+
+#ggplot(tot_change, aes(Visit_freq_cat, Joindate_cat)) +
+#    geom_tile(aes(fill = tot_commission),
+#            colour = "white") +
+#    scale_fill_gradient(low = "red", high = "steelblue", 
+#                        name = "total\ncommission\nchange") +
+#    facet_grid(~Age_cat) +
+#    theme(legend.position = "bottom") +
+#    labs(title = "Three dimension comparison: Age & Joindate & Visit_frequecy",
+#         subtitle = "Coupon effects on commission")
+```    
+
